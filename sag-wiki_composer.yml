@@ -1,0 +1,72 @@
+version: '3'
+services:
+  web:
+    image: sag-wiki:latest
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - /data/wiki-web/:/home
+    environment:
+      MYSQL_DB_URL: database
+      MYSQL_DB_NAME: mediawiki
+      MYSQL_USER: wikidbuser@sagmysql
+      MYSQL_PASSWORD: Password
+
+      MEDIAWIKI_SERVER: http://123.123.123.123
+
+      MEDIAWIKI_PARSOID_URL: http://parsoid:8142
+      MEDIAWIKI_RESTBASE_URL: http://restbase:7231/localhost/v1
+    deploy:
+        placement:
+          constraints: [node.role == manager]
+  database:
+    image: mariadb
+    restart: always
+    networks:
+      - backend
+    volumes:
+      - /data/wiki-database/mysql:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: mediawiki
+      MYSQL_USER: wikidbuser@sagmysql
+      MYSQL_PASSWORD: Password
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  parsoid:
+    image: sag-parsoid
+    restart: always
+    ports:
+      - "8142:80"
+    networks:
+      - backend
+    environment:
+      PARSOID_DOMAIN_localhost: http://web/w/api.php
+      PARSOID_LOGGING_LEVEL: info
+      PARSOID_PORT: 8142
+
+  restbase:
+    image: sag-restbase
+    restart: always
+    networks:
+      - frontend
+      - backend
+    ports:
+      - "7231:7231"
+    volumes:
+      - /data/wiki-restbase/data:/data
+    environment:
+      MEDIAWIKI_API_URL:      http://web/w/api.php
+      PARSOID_HOST_PORT:      http://parsoid:8142
+      RESTBASE_LOGGING_LEVEL: info
+      RESTBASE_PORT:          7231
+
+networks:
+  frontend:
+  backend:
